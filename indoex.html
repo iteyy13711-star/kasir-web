@@ -1,0 +1,1628 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kasir Simple</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600&display=swap');
+        .font-produk { font-family: 'Playfair Display', serif; letter-spacing: 0.5px; }
+        @keyframes slideDown { from { transform: translateY(-100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .animate-toast { animation: slideDown 0.3s ease-out forwards; }
+        @keyframes slideUpModal { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        .animate-modal { animation: slideUpModal 0.3s ease-out forwards; }
+        ::-webkit-scrollbar { width: 0px; background: transparent; }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-[#2E008B] via-[#4A55A2] to-[#2E008B] min-h-screen text-slate-800">
+
+    <!-- Halaman Login -->
+    <div id="loginPage" class="fixed inset-0 z-[100] flex items-center justify-center px-4 bg-gradient-to-br from-[#1A0B4A] via-[#4A55A2] to-[#2E008B]">
+        <div class="w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl">
+            <div class="text-center mb-6">
+                <div class="mx-auto mb-4 h-16 w-16 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-lg shadow-indigo-600/30">
+                    <i class="fa-solid fa-store text-2xl"></i>
+                </div>
+                <h1 class="text-2xl font-bold text-slate-800">Kasir Simple</h1>
+                <p class="text-sm text-slate-500 mt-1">Masuk untuk melanjutkan</p>
+            </div>
+            <form id="loginForm" class="space-y-4">
+                <div>
+                    <label for="loginUsername" class="text-xs font-semibold text-slate-600 mb-1 block">Nama</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-user absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                        <input id="loginUsername" type="text" autocomplete="username" required
+                            class="w-full pl-12 pr-4 py-3 border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-indigo-400"
+                            placeholder="Masukkan nama">
+                    </div>
+                </div>
+                <div>
+                    <label for="loginPassword" class="text-xs font-semibold text-slate-600 mb-1 block">Password</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-lock absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                        <input id="loginPassword" type="password" autocomplete="current-password" required
+                            class="w-full pl-12 pr-12 py-3 border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-indigo-400"
+                            placeholder="Masukkan password">
+                        <button type="button" onclick="togglePassword()" class="absolute right-3 top-1/2 -translate-y-1/2 h-8 w-8 text-slate-400 hover:text-indigo-600">
+                            <i id="passwordToggleIcon" class="fa-solid fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                <p id="loginError" class="hidden text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+                    Nama atau password salah.
+                </p>
+                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl font-bold transition shadow-lg shadow-indigo-600/30">
+                    Masuk
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div id="appPage" class="w-full max-w-7xl mx-auto min-h-screen relative pb-24 shadow-2xl bg-black/10 hidden">
+        <div id="header-area" class="p-4 sticky top-0 z-10 bg-gradient-to-b from-[#2E008B] to-transparent pt-6 pb-4">
+            <div class="relative">
+                <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                <input id="searchInput" type="text" placeholder="Cari produk..." 
+                    class="w-full pl-12 pr-12 py-3 rounded-xl border-none outline-none focus:ring-2 focus:ring-indigo-400 bg-white shadow-lg text-slate-700">
+                <button onclick="logout()" title="Keluar" class="absolute right-2 top-1/2 -translate-y-1/2 h-9 w-9 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                </button>
+            </div>
+            <div class="mt-3 flex items-center gap-2 bg-white/95 rounded-xl px-3 py-2 shadow-lg">
+                <i class="fa-solid fa-location-dot text-indigo-600"></i>
+                <label for="activeBranch" class="text-xs font-semibold text-slate-500 shrink-0">Lokasi jual</label>
+                <select id="activeBranch" onchange="setActiveBranch(this.value)" class="ml-auto flex-1 min-w-0 rounded-lg border border-slate-200 px-2 py-1.5 text-sm font-bold text-slate-700 outline-none"></select>
+            </div>
+        </div>
+
+        <div id="main-content" class="p-4">
+            <div id="view-kasir">
+                <div id="productList" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3"></div>
+            </div>
+
+            <div id="view-inventaris" class="hidden">
+                <div id="formContainer" class="bg-white rounded-xl p-4 shadow-lg mb-4 transition-colors duration-300">
+                    <h3 id="formTitle" class="font-bold text-lg mb-3 text-indigo-900">Tambah Produk Baru</h3>
+                    <form id="formProduct" class="space-y-3">
+                        <input type="hidden" id="editId">
+                        <div>
+                            <label class="text-xs font-semibold text-slate-500 mb-1 block">Nama Produk</label>
+                            <input type="text" id="inpNama" placeholder="Contoh: KOPI SUSU" required class="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-400 outline-none uppercase">
+                        </div>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                            <div class="col-span-2 sm:col-span-3">
+                                <label class="text-xs font-semibold text-slate-500 mb-1 block">Jenis Penjualan</label>
+                                <select id="inpJenisJual" onchange="toggleSaleUnitFields()" class="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-400 outline-none">
+                                    <option value="both">Pcs + Dus/Pack</option>
+                                    <option value="pcs">Pcs/Satuan saja</option>
+                                    <option value="pack">Dus/Pack saja</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-xs font-semibold text-slate-500 mb-1 block">Cabang/Lokasi</label>
+                                <input type="text" id="inpCabang" value="TOKO UTAMA" placeholder="TOKO UTAMA" required class="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-400 outline-none uppercase">
+                            </div>
+                            <div id="saleUnitPackFields">
+                                <label class="text-xs font-semibold text-slate-500 mb-1 block">Isi 1 Pack/Dus (pcs)</label>
+                                <input type="text" inputmode="numeric" id="inpIsiPack" value="1" placeholder="12" required class="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-400 outline-none">
+                            </div>
+                            <div class="flex-1">
+                                <label class="text-xs font-semibold text-slate-500 mb-1 block">Stok awal Toko Utama (pcs)</label>
+                                <input type="text" inputmode="numeric" id="inpStok" placeholder="0" required class="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-400 outline-none">
+                            </div>
+                            <div id="saleHargaPcsField" class="flex-1">
+                                <label class="text-xs font-semibold text-slate-500 mb-1 block">Harga Jual/Pcs (Rp)</label>
+                                <input type="text" inputmode="numeric" id="inpHarga" placeholder="1500" required class="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-400 outline-none">
+                            </div>
+                            <div id="saleHargaPackField" class="flex-1">
+                                <label class="text-xs font-semibold text-slate-500 mb-1 block">Harga Jual/Pack (Rp)</label>
+                                <input type="text" inputmode="numeric" id="inpHargaPack" placeholder="15000" required class="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-400 outline-none">
+                            </div>
+                            <div id="saleModalPackField" class="flex-1">
+                                                <label id="saleModalLabel" class="text-xs font-semibold text-slate-500 mb-1 block">Modal/Pack/Dus (Rp)</label>
+                                <input type="text" inputmode="numeric" id="inpHargaModal" placeholder="1000" required class="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-400 outline-none">
+                            </div>
+                        </div>
+                        <div class="flex gap-2 pt-2">
+                            <button type="submit" id="btnSubmit" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-lg font-bold transition shadow-md">Simpan Produk</button>
+                            <button type="button" id="btnCancelEdit" onclick="cancelEdit()" class="hidden w-24 bg-rose-500 hover:bg-rose-600 text-white py-2.5 rounded-lg font-bold transition shadow-md">Batal</button>
+                        </div>
+                    </form>
+                </div>
+                <div class="bg-white rounded-xl p-4 shadow-lg mb-4">
+                    <h3 class="font-bold text-sm text-indigo-900 mb-3">Tambah Lokasi Baru</h3>
+                    <div class="flex gap-2">
+                        <input id="newBranchName" type="text" placeholder="Contoh: TOKO CABANG A" class="flex-1 min-w-0 p-2.5 border border-slate-300 rounded-lg text-sm uppercase outline-none focus:ring-2 focus:ring-indigo-400">
+                        <button type="button" onclick="addNewBranch()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-lg font-bold text-sm">
+                            Tambah
+                        </button>
+                    </div>
+                    <div id="branchList" class="flex flex-wrap gap-2 mt-3"></div>
+                </div>
+                <div class="bg-white rounded-xl p-4 shadow-lg mb-4">
+                    <h3 class="font-bold text-sm text-indigo-900 mb-3">Transfer Stok Antar Lokasi</h3>
+                    <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 items-end">
+                        <div class="col-span-2 sm:col-span-1">
+                            <label class="text-xs font-semibold text-slate-500 mb-1 block">Produk</label>
+                            <select id="transferProduct" onchange="renderTransferLocations()" class="w-full p-2.5 border border-slate-300 rounded-lg text-sm outline-none"></select>
+                        </div>
+                        <div>
+                            <label class="text-xs font-semibold text-slate-500 mb-1 block">Dari</label>
+                            <select id="transferFrom" onchange="updateTransferAvailability()" class="w-full p-2.5 border border-slate-300 rounded-lg text-sm outline-none"></select>
+                        </div>
+                        <div>
+                            <label class="text-xs font-semibold text-slate-500 mb-1 block">Ke</label>
+                            <select id="transferTo" onchange="updateTransferAvailability()" class="w-full p-2.5 border border-slate-300 rounded-lg text-sm outline-none"></select>
+                        </div>
+                        <div>
+                            <label class="text-xs font-semibold text-slate-500 mb-1 block">Jumlah (pcs)</label>
+                            <input type="text" inputmode="numeric" id="transferQty" value="1" class="w-full p-2.5 border border-slate-300 rounded-lg text-sm outline-none">
+                        </div>
+                        <button type="button" onclick="transferStock()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white p-2.5 rounded-lg font-bold text-sm">
+                            Transfer
+                        </button>
+                    </div>
+                    <p id="transferAvailability" class="text-xs text-slate-500 mt-2"></p>
+                </div>
+                <div id="inventoryList" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3"></div>
+            </div>
+
+            <div id="view-laporan" class="hidden space-y-4">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div class="bg-white rounded-xl p-5 shadow-lg text-center">
+                        <p class="text-slate-500 text-sm">Total Omset Hari Ini</p>
+                        <h2 id="laporanOmset" class="text-3xl font-bold text-indigo-600 mt-2">Rp 0</h2>
+                    </div>
+                    <div class="bg-white rounded-xl p-5 shadow-lg text-center">
+                        <p class="text-slate-500 text-sm">Jumlah Transaksi Hari Ini</p>
+                        <h2 id="laporanTrx" class="text-3xl font-bold text-emerald-600 mt-2">0</h2>
+                    </div>
+                    <div class="bg-white rounded-xl p-5 shadow-lg text-center">
+                        <p class="text-slate-500 text-sm">Laba Kotor Hari Ini</p>
+                        <h2 id="laporanLaba" class="text-3xl font-bold text-amber-600 mt-2">Rp 0</h2>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl p-4 shadow-lg">
+                    <p class="font-bold text-slate-800 mb-3">Pembayaran Hari Ini</p>
+                    <div id="laporanPembayaran" class="grid grid-cols-2 sm:grid-cols-4 gap-2"></div>
+                </div>
+                <h3 class="font-bold text-white text-lg">Penjualan Per Hari</h3>
+                <div id="laporanPerHari" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"></div>
+            </div>
+        </div>
+
+        <div id="floatingCart" class="fixed bottom-24 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-3xl z-20 hidden">
+            <button onclick="openCartModal()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white p-4 rounded-2xl shadow-xl flex justify-between items-center transition border border-indigo-400">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-cart-shopping"></i>
+                    <span class="font-bold">Keranjang</span>
+                    <span id="cartBadge" class="bg-white text-indigo-600 text-xs px-2 py-1 rounded-full font-bold">0</span>
+                </div>
+                <span id="cartTotalFloat" class="font-bold text-lg">Rp 0</span>
+            </button>
+        </div>
+
+        <nav class="fixed bottom-0 inset-x-0 max-w-7xl mx-auto bg-[#1A0B4A] border-t border-indigo-900 flex justify-around py-3 text-slate-400 z-30 pb-safe">
+            <button onclick="setView('kasir')" class="nav-btn flex flex-col items-center gap-1 w-16 text-indigo-400 transition">
+                <i class="fa-solid fa-cart-shopping text-xl"></i>
+                <span class="text-[10px]">Kasir</span>
+            </button>
+            <button onclick="setView('inventaris')" class="nav-btn flex flex-col items-center gap-1 w-16 hover:text-white transition">
+                <i class="fa-solid fa-box-open text-xl"></i>
+                <span class="text-[10px]">Stok</span>
+            </button>
+            <button onclick="setView('laporan')" class="nav-btn flex flex-col items-center gap-1 w-16 hover:text-white transition">
+                <i class="fa-solid fa-chart-simple text-xl"></i>
+                <span class="text-[10px]">Laporan</span>
+            </button>
+        </nav>
+    </div>
+
+    <div id="cartModal" class="fixed inset-0 bg-black/60 z-40 hidden flex items-end justify-center backdrop-blur-sm">
+        <div class="bg-white w-full max-w-2xl sm:max-h-[85vh] sm:mb-4 sm:rounded-3xl rounded-t-3xl p-5 shadow-2xl animate-modal">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="font-bold text-xl text-slate-800">Keranjang Belanja</h3>
+                <button onclick="closeCartModal()" class="text-slate-400 hover:text-slate-700 bg-slate-100 rounded-full h-8 w-8"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div id="cartItems" class="max-h-[40vh] overflow-y-auto space-y-3 mb-4"></div>
+            <div class="border-t pt-4">
+                <div class="flex justify-between font-bold text-lg mb-4">
+                    <span>Total</span>
+                    <span id="cartTotalModal" class="text-indigo-600">Rp 0</span>
+                </div>
+                <div class="mb-4">
+                    <label for="paymentMethod" class="text-xs font-semibold text-slate-500 mb-1 block">Metode Pembayaran</label>
+                    <select id="paymentMethod" class="w-full p-3 border border-slate-300 rounded-xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-400">
+                        <option value="CASH">Cash</option>
+                        <option value="QRIS BCA">QRIS BCA</option>
+                        <option value="QRIS BRI">QRIS BRI</option>
+                    </select>
+                </div>
+                <button onclick="checkout()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl font-bold text-lg transition shadow-lg shadow-indigo-600/30">
+                    Bayar Sekarang
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="reportDetailModal" class="fixed inset-0 bg-black/60 z-[45] hidden flex items-end sm:items-center justify-center backdrop-blur-sm">
+        <div class="bg-white w-full max-w-2xl max-h-[85vh] sm:rounded-3xl rounded-t-3xl p-5 shadow-2xl animate-modal overflow-hidden flex flex-col">
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <p class="text-xs text-slate-500">Detail penjualan</p>
+                    <h3 id="reportDetailTitle" class="font-bold text-xl text-slate-800"></h3>
+                </div>
+                <div class="flex gap-2">
+                    <button id="reportEditButton" onclick="" class="bg-amber-500 hover:bg-amber-600 text-white px-3 py-2 rounded-lg text-sm font-bold transition">
+                        <i class="fa-solid fa-pen mr-1"></i>Edit laporan
+                    </button>
+                    <button onclick="closeReportDetail()" class="text-slate-400 hover:text-slate-700 bg-slate-100 rounded-full h-8 w-8"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+            </div>
+            <div id="reportDetailContent" class="overflow-y-auto space-y-3 pr-1"></div>
+        </div>
+    </div>
+
+    <div id="reportEditModal" class="fixed inset-0 bg-black/60 z-[50] hidden flex items-end sm:items-center justify-center backdrop-blur-sm">
+        <div class="bg-white w-full max-w-3xl max-h-[90vh] sm:rounded-3xl rounded-t-3xl p-5 shadow-2xl animate-modal overflow-hidden flex flex-col">
+            <div class="flex justify-between items-start mb-3">
+                <div>
+                    <p class="text-xs text-slate-500">Koreksi riwayat penjualan</p>
+                    <h3 id="reportEditTitle" class="font-bold text-xl text-slate-800"></h3>
+                </div>
+                <button onclick="closeReportEditor()" class="text-slate-400 hover:text-slate-700 bg-slate-100 rounded-full h-8 w-8"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <p class="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 mb-3">
+                Perubahan laporan tidak mengubah stok barang.
+            </p>
+            <div id="reportEditContent" class="overflow-y-auto space-y-3 pr-1"></div>
+            <div class="flex gap-2 pt-4">
+                <button onclick="addReportTransaction()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 py-3 rounded-xl font-bold transition">
+                    <i class="fa-solid fa-plus mr-1"></i>Tambah transaksi
+                </button>
+                <button onclick="saveReportEditor()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl font-bold transition">
+                    Simpan perubahan
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toastContainer" class="fixed top-4 inset-x-0 mx-auto max-w-md px-4 z-[60] flex flex-col items-center pointer-events-none space-y-2"></div>
+
+    <script>
+        // ==========================================
+        // KONFIGURASI LOGIN
+        // ==========================================
+        const LOGIN_USERNAME = 'perdanawater';
+        const LOGIN_PASSWORD = 'perdanatokowater1';
+        const LOGIN_TOKEN_KEY = 'kasir_login_token';
+        const LOGIN_TOKEN = 'perdanawater-logged-in';
+
+        const URL_SHEET = 'https://script.google.com/macros/s/AKfycbznJmHF-uOR8RQHUsdczNP76YZLboNGXlTu0bh3M5whHKQ_tZQZToo9s86VE72bpfDnGw/exec';
+
+        function checkLogin() {
+            const isLoggedIn = localStorage.getItem(LOGIN_TOKEN_KEY) === LOGIN_TOKEN;
+            document.getElementById('loginPage').classList.toggle('hidden', isLoggedIn);
+            document.getElementById('appPage').classList.toggle('hidden', !isLoggedIn);
+            document.body.classList.toggle('overflow-hidden', !isLoggedIn);
+            if (isLoggedIn) init();
+        }
+
+        function togglePassword() {
+            const passwordInput = document.getElementById('loginPassword');
+            const icon = document.getElementById('passwordToggleIcon');
+            const showPassword = passwordInput.type === 'password';
+            passwordInput.type = showPassword ? 'text' : 'password';
+            icon.classList.toggle('fa-eye', !showPassword);
+            icon.classList.toggle('fa-eye-slash', showPassword);
+        }
+
+        function logout() {
+            localStorage.removeItem(LOGIN_TOKEN_KEY);
+            document.getElementById('loginPage').classList.remove('hidden');
+            document.getElementById('appPage').classList.add('hidden');
+            document.body.classList.add('overflow-hidden');
+            document.getElementById('loginPassword').value = '';
+            document.getElementById('loginError').classList.add('hidden');
+            document.getElementById('loginUsername').focus();
+        }
+
+        document.getElementById('loginForm').addEventListener('submit', (event) => {
+            event.preventDefault();
+            const username = document.getElementById('loginUsername').value.trim();
+            const password = document.getElementById('loginPassword').value;
+            const loginError = document.getElementById('loginError');
+            if (username === LOGIN_USERNAME && password === LOGIN_PASSWORD) {
+                localStorage.setItem(LOGIN_TOKEN_KEY, LOGIN_TOKEN);
+                loginError.classList.add('hidden');
+                checkLogin();
+            } else {
+                loginError.classList.remove('hidden');
+                document.getElementById('loginPassword').select();
+            }
+        });
+
+        // ==========================================
+        // FIREBASE
+        // ==========================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyCQ9Dc_MxE4McfD7-eOb4v37Oy3h4E0zaI",
+            authDomain: "sistem-kasir-perdana.firebaseapp.com",
+            databaseURL: "https://sistem-kasir-perdana-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "sistem-kasir-perdana",
+            storageBucket: "sistem-kasir-perdana.firebasestorage.app",
+            messagingSenderId: "523396843008",
+            appId: "1:523396843008:web:45bd60540413d099e3fae5"
+        };
+
+        let db = null;
+        let useFirebase = false;
+        try {
+            if (firebaseConfig && firebaseConfig.apiKey && firebaseConfig.apiKey !== "GANTI_API_KEY") {
+                firebase.initializeApp(firebaseConfig);
+                db = firebase.database();
+                useFirebase = true;
+                console.log("Sistem: Firebase Aktif.");
+            }
+        } catch (e) {
+            console.warn("Firebase gagal dimuat, beralih ke LocalStorage.");
+        }
+
+        // ==========================================
+        // STATE & UTIL
+        // ==========================================
+        let products = [];
+        let cart = [];
+        let transactions = [];
+        let reportEditTransactions = [];
+        let activeBranch = localStorage.getItem('kasir_active_branch') || 'TOKO UTAMA';
+        let locations = ['TOKO UTAMA'];
+
+        const escapeHtml = (value) => String(value ?? '')
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+
+        const rp = (num) => {
+            const n = Number(num);
+            if (isNaN(n)) return "Rp 0";
+            return "Rp " + n.toLocaleString('id-ID');
+        };
+
+        const getPaymentMethod = (transaction) => {
+            const value = String(transaction?.paymentMethod || transaction?.metodePembayaran || 'CASH').trim().toUpperCase();
+            return ['CASH', 'QRIS BCA', 'QRIS BRI'].includes(value) ? value : 'CASH';
+        };
+
+        const getTransactionBranch = (transaction) => {
+            const directBranch = String(transaction?.branch || transaction?.lokasi || transaction?.location || '').trim().toUpperCase();
+            if (directBranch) return directBranch;
+            const itemBranch = Array.isArray(transaction?.items)
+                ? transaction.items.map(item => String(item?.branch || '').trim().toUpperCase()).find(Boolean)
+                : '';
+            return itemBranch || activeBranch || 'TOKO UTAMA';
+        };
+
+        const getLocalDateKey = (dateValue) => {
+            const date = new Date(dateValue);
+            if (isNaN(date.getTime())) return '';
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        };
+
+        const dummyProducts = [
+            { id: 'P1', nama: 'KOPI SUSU', hargaModal: 10000, harga: 15000, stok: 120, pcsPerPack: 12, packName: 'PACK', branches: [{ name: 'TOKO UTAMA', hargaPcs: 15000, hargaPack: 150000, hargaModalPcs: 10000, hargaModalPack: 120000 }] },
+            { id: 'P2', nama: 'ROTI BAKAR', hargaModal: 8000, harga: 12000, stok: 60, pcsPerPack: 6, packName: 'PACK', branches: [{ name: 'TOKO UTAMA', hargaPcs: 12000, hargaPack: 60000, hargaModalPcs: 8000, hargaModalPack: 48000 }] },
+            { id: 'P3', nama: 'ES TEH MANIS', hargaModal: 3000, harga: 5000, stok: 240, pcsPerPack: 24, packName: 'PACK', branches: [{ name: 'TOKO UTAMA', hargaPcs: 5000, hargaPack: 110000, hargaModalPcs: 3000, hargaModalPack: 72000 }] }
+        ];
+
+        function normalizeProducts(sourceProducts) {
+            return (sourceProducts || []).map(p => {
+                const stokPcs = Number(p.stokPcs ?? p.stok ?? 0);
+                const pcsPerPack = Math.max(1, Number(p.pcsPerPack ?? p.isiPack ?? 1));
+                const legacyBranch = {
+                    name: 'TOKO UTAMA',
+                    hargaPcs: Number(p.harga || 0),
+                    hargaPack: Number(p.hargaPack ?? (Number(p.harga || 0) * pcsPerPack)),
+                    hargaModalPcs: Number(p.hargaModal ?? p.hargaBeli ?? 0),
+                    hargaModalPack: Number(p.hargaModalPack ?? (Number(p.hargaModal ?? p.hargaBeli ?? 0) * pcsPerPack)),
+                    priceHistory: p.priceHistory || [],
+                    modalHistory: p.modalHistory || []
+                };
+                const normalized = {
+                    ...p,
+                    stok: stokPcs,
+                    stokPcs,
+                    pcsPerPack,
+                    packName: p.packName || 'PACK',
+                    saleType: ['pcs', 'pack', 'both'].includes(p.saleType) ? p.saleType : 'both',
+                    branches: (Array.isArray(p.branches) && p.branches.length > 0)
+                        ? p.branches.map(b => ({
+                            ...b,
+                            name: String(b.name || 'TOKO UTAMA').trim().toUpperCase(),
+                            hargaPcs: Number(b.hargaPcs ?? b.harga ?? 0),
+                            hargaPack: Number(b.hargaPack ?? (Number(b.hargaPcs ?? b.harga ?? 0) * pcsPerPack)),
+                            hargaModalPcs: Number(b.hargaModalPcs ?? b.hargaModal ?? 0),
+                            hargaModalPack: Number(b.hargaModalPack ?? (Number(b.hargaModalPcs ?? b.hargaModal ?? 0) * pcsPerPack)),
+                            priceHistory: Array.isArray(b.priceHistory) ? b.priceHistory : [],
+                            modalHistory: Array.isArray(b.modalHistory) ? b.modalHistory : []
+                        }))
+                        : [legacyBranch]
+                };
+                normalized.stockByBranch = p.stockByBranch && typeof p.stockByBranch === 'object'
+                    ? { ...p.stockByBranch }
+                    : {};
+                const primaryName = normalized.branches.some(b => b.name === 'TOKO UTAMA')
+                    ? 'TOKO UTAMA'
+                    : normalized.branches[0]?.name || 'TOKO UTAMA';
+                if (!Object.prototype.hasOwnProperty.call(normalized.stockByBranch, primaryName)) {
+                    normalized.stockByBranch[primaryName] = stokPcs;
+                }
+                normalized.branches.forEach(branch => {
+                    if (!Object.prototype.hasOwnProperty.call(normalized.stockByBranch, branch.name)) {
+                        normalized.stockByBranch[branch.name] = 0;
+                    }
+                });
+                if (!normalized.branches.some(branch => branch.name === 'TOKO UTAMA')) {
+                    const template = normalized.branches[0] || legacyBranch;
+                    normalized.branches.unshift({ ...template, name: 'TOKO UTAMA', priceHistory: [], modalHistory: [] });
+                }
+                normalized.transfers = Array.isArray(p.transfers) ? p.transfers : [];
+                return normalized;
+            });
+        }
+
+        function getBranchNames() {
+            return [...new Set(['TOKO UTAMA', ...locations, ...products.flatMap(p => (p.branches || []).map(b => b.name)).filter(Boolean)])];
+        }
+
+        function toggleSaleUnitFields() {
+            const type = document.getElementById('inpJenisJual')?.value || 'both';
+            const isiPack = document.getElementById('saleUnitPackFields');
+            const hargaPcs = document.getElementById('saleHargaPcsField');
+            const hargaPack = document.getElementById('saleHargaPackField');
+            const modalPack = document.getElementById('saleModalPackField');
+            if (isiPack) isiPack.classList.toggle('hidden', type === 'pcs');
+            if (hargaPcs) hargaPcs.classList.toggle('hidden', type === 'pack');
+            if (hargaPack) hargaPack.classList.toggle('hidden', type === 'pcs');
+            if (modalPack) modalPack.classList.remove('hidden');
+            document.getElementById('inpIsiPack').required = type !== 'pcs';
+            document.getElementById('inpHarga').required = type !== 'pack';
+            document.getElementById('inpHargaPack').required = type !== 'pcs';
+            document.getElementById('inpHargaModal').required = true;
+            document.getElementById('saleModalLabel').textContent = type === 'pcs'
+                ? 'Modal/Pcs (Rp)'
+                : 'Modal/Pack/Dus (Rp)';
+        }
+
+        function getBranch(p, name = activeBranch) {
+            const branches = p.branches || [];
+            return branches.find(b => b.name === name) || branches[0] || null;
+        }
+
+        function getBranchStock(p, branchName) {
+            return Number(p.stockByBranch?.[branchName] ?? (branchName === 'TOKO UTAMA' ? p.stokPcs ?? p.stok ?? 0 : 0));
+        }
+
+        function setBranchStock(p, branchName, quantity) {
+            if (!p.stockByBranch || typeof p.stockByBranch !== 'object') p.stockByBranch = {};
+            p.stockByBranch[branchName] = Math.max(0, Math.floor(Number(quantity) || 0));
+            if (branchName === 'TOKO UTAMA') {
+                p.stokPcs = p.stockByBranch[branchName];
+                p.stok = p.stokPcs;
+            }
+        }
+
+        function getUnitInfo(p, unit, branchName = activeBranch) {
+            const branch = getBranch(p, branchName);
+            if (!branch) return { pieces: 1, price: 0, modal: Number(p.hargaModal || 0), label: 'PCS' };
+            if (unit === 'pack') {
+                return {
+                    pieces: Number(p.pcsPerPack || 1),
+                    price: Number(branch.hargaPack || 0),
+                    modal: Number(branch.hargaModalPack ?? (branch.hargaModalPcs * (p.pcsPerPack || 1))),
+                    label: p.packName || 'PACK'
+                };
+            }
+            return {
+                pieces: 1,
+                price: Number(branch.hargaPcs || 0),
+                modal: Number(branch.hargaModalPcs || 0),
+                label: 'PCS'
+            };
+        }
+
+        function renderBranchSelector() {
+            const select = document.getElementById('activeBranch');
+            if (!select) return;
+            const names = getBranchNames();
+            if (!names.includes(activeBranch) && names.length) activeBranch = names[0];
+            if (!names.length) names.push('TOKO UTAMA');
+            select.innerHTML = names.map(name => `<option value="${escapeHtml(name)}" ${name === activeBranch ? 'selected' : ''}>${escapeHtml(name)}</option>`).join('');
+        }
+
+        function setActiveBranch(name) {
+            activeBranch = String(name || 'TOKO UTAMA').trim().toUpperCase();
+            localStorage.setItem('kasir_active_branch', activeBranch);
+            renderProducts();
+            renderCart();
+        }
+
+        // ==========================================
+        // GOOGLE SHEETS: KIRIM TRANSAKSI & STOK
+        // ==========================================
+        function kirimKeSheets(detail, total, profit, items, kasir, paymentMethod = 'CASH') {
+            if (!URL_SHEET || URL_SHEET.includes('PASTE_URL')) {
+                console.warn('URL_SHEET belum diisi, pengiriman transaksi dilewati.');
+                return;
+            }
+            fetch(URL_SHEET, {
+                method: 'POST',
+                body: JSON.stringify({ type: 'transaksi', detail, total, profit, items, kasir, paymentMethod, branch: activeBranch })
+            })
+            .then(() => console.log('✅ Transaksi terkirim ke Sheets'))
+            .catch(err => console.error('❌ Gagal kirim transaksi:', err));
+        }
+
+        function kirimStokKeSheets() {
+            if (!URL_SHEET || URL_SHEET.includes('PASTE_URL')) return;
+            fetch(URL_SHEET, {
+                method: 'POST',
+                body: JSON.stringify({
+                    type: 'stok',
+                    products: products.map(p => ({
+                        nama: p.nama,
+                        hargaModal: Number(p.hargaModal || 0),
+                        harga: p.harga,
+                        stok: Number(p.stokPcs ?? p.stok ?? 0),
+                        pcsPerPack: Number(p.pcsPerPack || 1),
+                        branches: p.branches || [],
+                        stockByBranch: p.stockByBranch || {}
+                    }))
+                })
+            })
+            .then(() => console.log('✅ Stok tersinkron ke Sheets'))
+            .catch(err => console.error('❌ Gagal kirim stok:', err));
+        }
+
+        // ==========================================
+        // INISIALISASI DATA
+        // ==========================================
+        function init() {
+            if (useFirebase && db) {
+                db.ref('pos_data').on('value', (snapshot) => {
+                    const data = snapshot.val();
+                    if (data && data.products) {
+                        products = Array.isArray(data.products) ? data.products : Object.values(data.products);
+                        transactions = Array.isArray(data.transactions)
+                            ? data.transactions
+                            : (data.transactions ? Object.values(data.transactions) : []);
+                        products = normalizeProducts(products);
+                        locations = Array.isArray(data.locations) ? data.locations : ['TOKO UTAMA'];
+                        locations = ['TOKO UTAMA', ...locations.map(name => String(name).trim().toUpperCase()).filter(Boolean)
+                            .filter((name, index, all) => name !== 'TOKO UTAMA' && all.indexOf(name) === index)];
+                    } else {
+                        products = dummyProducts;
+                        transactions = [];
+                        saveData();
+                    }
+                    renderAll();
+                }, (error) => {
+                    console.error("Firebase Error:", error);
+                    loadFromLocal();
+                });
+            } else {
+                loadFromLocal();
+            }
+        }
+
+        function loadFromLocal() {
+            try {
+                const localData = localStorage.getItem('pos_data');
+                if (localData) {
+                    const parsed = JSON.parse(localData);
+                    products = parsed.products || dummyProducts;
+                    transactions = parsed.transactions || [];
+                    products = normalizeProducts(products);
+                    locations = Array.isArray(parsed.locations) ? parsed.locations : ['TOKO UTAMA'];
+                    locations = ['TOKO UTAMA', ...locations.map(name => String(name).trim().toUpperCase()).filter(Boolean)
+                        .filter((name, index, all) => name !== 'TOKO UTAMA' && all.indexOf(name) === index)];
+                } else {
+                    products = dummyProducts;
+                    transactions = [];
+                }
+            } catch (e) { products = dummyProducts; }
+            renderAll();
+        }
+
+        function saveData() {
+            try {
+                localStorage.setItem('pos_data', JSON.stringify({ products, transactions, locations }));
+            } catch (e) { console.error("Gagal simpan LocalStorage:", e); }
+
+            if (useFirebase && db) {
+                db.ref('pos_data').set({ products, transactions, locations }).catch(err => {
+                    console.error("Gagal simpan Firebase:", err);
+                    showToast('Gagal sinkron ke Cloud, data tersimpan di HP', 'bg-amber-500');
+                });
+            }
+            kirimStokKeSheets();
+        }
+
+        // ==========================================
+        // RENDER
+        // ==========================================
+        function renderAll() {
+            products = normalizeProducts(products);
+            renderBranchSelector();
+            renderProducts();
+            renderInventory();
+            renderCart();
+            renderLaporan();
+            renderTransferProduct();
+            renderBranchList();
+        }
+
+        function renderProducts() {
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const container = document.getElementById('productList');
+            const filtered = products.filter(p => p.nama.toLowerCase().includes(search));
+            if (filtered.length === 0) {
+                container.innerHTML = `<p class="text-white text-center mt-10 opacity-70">Produk tidak ditemukan.</p>`;
+                return;
+            }
+            container.innerHTML = filtered.map(p => `
+                <div class="bg-white rounded-2xl p-4 flex justify-between items-center shadow-lg animate-toast">
+                    <div>
+                        <h3 class="font-produk font-bold text-lg text-slate-800">${escapeHtml(p.nama)}</h3>
+                        ${p.saleType !== 'pack' ? `<p class="text-indigo-600 font-bold text-sm mt-1">${rp(getUnitInfo(p, 'pcs', activeBranch).price)} / pcs</p>` : ''}
+                        ${p.saleType !== 'pcs' ? `<p class="text-xs text-indigo-700 font-semibold">${rp(getUnitInfo(p, 'pack', activeBranch).price)} / ${escapeHtml(p.packName || 'PACK')}</p>` : ''}
+                        <p class="text-xs text-slate-400 mt-1">Modal: ${rp(getUnitInfo(p, 'pcs', activeBranch).modal)} / pcs</p>
+                        <p class="text-xs text-slate-500 mt-1">${escapeHtml(activeBranch)}: <span class="${getBranchStock(p, activeBranch) <= p.pcsPerPack ? 'text-red-500 font-bold' : 'font-semibold'}">${getBranchStock(p, activeBranch)} pcs = ${Math.floor(getBranchStock(p, activeBranch) / p.pcsPerPack)} pack</span></p>
+                    </div>
+                    <div class="flex flex-col gap-1.5 shrink-0">
+                        ${p.saleType !== 'pack' ? `<button onclick="addToCart('${escapeHtml(p.id)}','pcs')" ${getBranchStock(p, activeBranch) <= 0 ? 'disabled' : ''}
+                            class="rounded-lg px-2.5 py-2 text-xs font-bold ${getBranchStock(p, activeBranch) <= 0 ? 'bg-slate-300 text-slate-500' : 'bg-indigo-600 text-white hover:bg-indigo-700'}">+ PCS</button>
+                        ` : ''}
+                        ${p.saleType !== 'pcs' ? `<button onclick="addToCart('${escapeHtml(p.id)}','pack')" ${getBranchStock(p, activeBranch) < p.pcsPerPack ? 'disabled' : ''}
+                            class="rounded-lg px-2.5 py-2 text-xs font-bold ${getBranchStock(p, activeBranch) < p.pcsPerPack ? 'bg-slate-300 text-slate-500' : 'bg-emerald-600 text-white hover:bg-emerald-700'}">+ PACK</button>` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderInventory() {
+            const container = document.getElementById('inventoryList');
+            container.innerHTML = products.map(p => `
+                <div class="bg-white rounded-xl p-3 flex justify-between items-center shadow-md">
+                    <div class="flex-1">
+                        <p class="font-bold text-slate-800 text-sm">${escapeHtml(p.nama)}</p>
+                        <div class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
+                            <span class="text-xs text-slate-500">1 ${escapeHtml(p.packName || 'PACK')} = <b>${p.pcsPerPack} pcs</b></span>
+                        </div>
+                        <p class="text-[11px] text-slate-500 mt-1">${getBranchNames().map(name => `${escapeHtml(name)}: ${getBranchStock(p, name)} pcs`).join(' | ')}</p>
+                        <p class="text-[11px] text-slate-400 mt-1">${(p.branches || []).map(b => `${escapeHtml(b.name)}: ${rp(b.hargaPcs)}/pcs, ${rp(b.hargaPack)}/pack`).join(' | ')}</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="editProduct('${escapeHtml(p.id)}')" class="text-amber-600 hover:text-amber-700 bg-amber-100 p-2.5 rounded-lg font-bold text-sm" title="Edit Produk"><i class="fa-solid fa-pen"></i></button>
+                        <button onclick="deleteProduct('${escapeHtml(p.id)}')" class="text-red-600 hover:text-red-700 bg-red-100 p-2.5 rounded-lg font-bold text-sm" title="Hapus"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderLaporan() {
+            const today = new Date();
+            const todayKey = getLocalDateKey(today);
+            const validTransactions = transactions.filter(t => t && t.date && !isNaN(new Date(t.date).getTime()));
+            const todayTransactions = validTransactions.filter(t => getLocalDateKey(t.date) === todayKey);
+            const totalOmset = todayTransactions.reduce((sum, t) => sum + Number(t.total || 0), 0);
+            const totalLaba = todayTransactions.reduce((sum, t) => sum + Number(t.profit || 0), 0);
+            document.getElementById('laporanOmset').innerText = rp(totalOmset);
+            document.getElementById('laporanTrx').innerText = todayTransactions.length;
+            document.getElementById('laporanLaba').innerText = rp(totalLaba);
+            const paymentToday = { 'CASH': 0, 'QRIS BCA': 0, 'QRIS BRI': 0 };
+            todayTransactions.forEach(t => {
+                paymentToday[getPaymentMethod(t)] += Number(t.total || 0);
+            });
+            document.getElementById('laporanPembayaran').innerHTML = Object.entries(paymentToday).map(([method, amount]) => `
+                <div class="rounded-xl border border-slate-200 bg-slate-50 p-3 text-center">
+                    <p class="text-[11px] text-slate-500">${escapeHtml(method)}</p>
+                    <p class="font-bold text-sm text-indigo-600 mt-1">${rp(amount)}</p>
+                </div>
+            `).join('');
+
+            const grouped = {};
+            validTransactions.forEach(t => {
+                const dateKey = getLocalDateKey(t.date);
+                if (!dateKey) return;
+                if (!grouped[dateKey]) grouped[dateKey] = { total: 0, profit: 0, count: 0, transactions: [] };
+                grouped[dateKey].total += Number(t.total || 0);
+                grouped[dateKey].profit += Number(t.profit || 0);
+                grouped[dateKey].count++;
+                grouped[dateKey].transactions.push(t);
+            });
+
+            const container = document.getElementById('laporanPerHari');
+            const dateKeys = Object.keys(grouped).sort((a, b) => b.localeCompare(a));
+            if (dateKeys.length === 0) {
+                container.innerHTML = '<p class="text-white text-center opacity-70 sm:col-span-2 lg:col-span-3 py-6">Belum ada penjualan.</p>';
+                return;
+            }
+            container.innerHTML = dateKeys.map(dateKey => {
+                const group = grouped[dateKey];
+                const [year, month, day] = dateKey.split('-').map(Number);
+                const label = new Date(year, month - 1, day).toLocaleDateString('id-ID', {
+                    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+                });
+                const paymentGroup = { 'CASH': 0, 'QRIS BCA': 0, 'QRIS BRI': 0 };
+                group.transactions.forEach(t => {
+                    paymentGroup[getPaymentMethod(t)] += Number(t.total || 0);
+                });
+                const branchGroup = {};
+                group.transactions.forEach(t => {
+                    const branch = getTransactionBranch(t);
+                    branchGroup[branch] = (branchGroup[branch] || 0) + Number(t.total || 0);
+                });
+                return `
+                    <button onclick="openReportDetail('${dateKey}')" class="bg-white rounded-xl p-4 shadow-lg border-l-4 border-indigo-500 text-left w-full hover:shadow-xl transition">
+                        <p class="font-bold text-slate-800">${label}</p>
+                        <div class="mt-3 flex justify-between items-end gap-3">
+                            <div>
+                                <p class="text-xs text-slate-500">Jumlah transaksi</p>
+                                <p class="font-bold text-emerald-600">${group.count}</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-xs text-slate-500">Total penjualan</p>
+                                <p class="font-bold text-indigo-600 text-lg">${rp(group.total)}</p>
+                            </div>
+                        </div>
+                        <div class="mt-2 flex justify-between items-center border-t pt-2">
+                            <span class="text-xs text-slate-500">Laba kotor</span>
+                            <span class="font-bold text-amber-600">${rp(group.profit)}</span>
+                        </div>
+                        <div class="mt-2 grid grid-cols-3 gap-1 border-t pt-2">
+                            ${Object.entries(paymentGroup).map(([method, amount]) => `
+                                <div class="text-center">
+                                    <p class="text-[9px] text-slate-400">${escapeHtml(method)}</p>
+                                    <p class="text-[11px] font-bold text-slate-600">${rp(amount)}</p>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <div class="mt-2 border-t pt-2 flex flex-wrap gap-1">
+                            ${Object.entries(branchGroup).map(([branch, amount]) => `
+                                <span class="rounded-full bg-indigo-50 px-2 py-1 text-[10px] font-bold text-indigo-700">${escapeHtml(branch)}: ${rp(amount)}</span>
+                            `).join('')}
+                        </div>
+                        <p class="text-xs text-indigo-600 mt-2 font-semibold">Lihat detail transaksi <i class="fa-solid fa-chevron-right ml-1"></i></p>
+                    </button>
+                `;
+            }).join('');
+        }
+
+        function openReportDetail(dateKey) {
+            const dayTransactions = transactions.filter(t =>
+                t && t.date && !isNaN(new Date(t.date).getTime()) && getLocalDateKey(t.date) === dateKey
+            );
+            if (dayTransactions.length === 0) return;
+            document.getElementById('reportEditButton').setAttribute('onclick', `openReportEditor('${dateKey}')`);
+
+            const [year, month, day] = dateKey.split('-').map(Number);
+            document.getElementById('reportDetailTitle').innerText =
+                new Date(year, month - 1, day).toLocaleDateString('id-ID', {
+                    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+                });
+
+            const soldItems = {};
+            dayTransactions.forEach(transaction => {
+                (Array.isArray(transaction.items) ? transaction.items : []).forEach(item => {
+                    const key = item.nama || item.name || 'Produk';
+                    if (!soldItems[key]) soldItems[key] = {
+                        nama: key,
+                        qty: 0,
+                        hargaModal: Number(item.hargaModal ?? 0),
+                        hargaJual: Number(item.hargaJual ?? item.harga ?? 0),
+                        subtotal: 0,
+                        profit: 0
+                    };
+                    const qty = Number(item.qty || 0);
+                    soldItems[key].qty += qty;
+                    soldItems[key].subtotal += Number(item.subtotal ?? (Number(item.hargaJual ?? item.harga ?? 0) * qty));
+                    soldItems[key].profit += Number(item.profit ?? ((Number(item.hargaJual ?? item.harga ?? 0) - Number(item.hargaModal ?? 0)) * qty));
+                });
+            });
+
+            const total = dayTransactions.reduce((sum, t) => sum + Number(t.total || 0), 0);
+            const profit = dayTransactions.reduce((sum, t) => sum + Number(t.profit || 0), 0);
+            const itemList = Object.values(soldItems);
+            const paymentBreakdown = { 'CASH': 0, 'QRIS BCA': 0, 'QRIS BRI': 0 };
+            dayTransactions.forEach(t => {
+                paymentBreakdown[getPaymentMethod(t)] += Number(t.total || 0);
+            });
+            const branchBreakdown = {};
+            dayTransactions.forEach(t => {
+                const branch = getTransactionBranch(t);
+                branchBreakdown[branch] = (branchBreakdown[branch] || 0) + Number(t.total || 0);
+            });
+
+            document.getElementById('reportDetailContent').innerHTML = `
+                <div class="grid grid-cols-3 gap-2 bg-slate-50 rounded-xl p-3 border border-slate-200">
+                    <div><p class="text-xs text-slate-500">Transaksi</p><p class="font-bold text-emerald-600">${dayTransactions.length}</p></div>
+                    <div><p class="text-xs text-slate-500">Omset</p><p class="font-bold text-indigo-600">${rp(total)}</p></div>
+                    <div><p class="text-xs text-slate-500">Laba</p><p class="font-bold text-amber-600">${rp(profit)}</p></div>
+                </div>
+                <div>
+                    <h4 class="font-bold text-slate-800 mb-2">Ringkasan Pembayaran</h4>
+                    <div class="grid grid-cols-3 gap-2">
+                        ${Object.entries(paymentBreakdown).map(([method, amount]) => `
+                            <div class="bg-slate-50 border border-slate-200 rounded-xl p-2 text-center">
+                                <p class="text-[10px] text-slate-500">${escapeHtml(method)}</p>
+                                <p class="font-bold text-indigo-600 text-sm">${rp(amount)}</p>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                <div>
+                    <h4 class="font-bold text-slate-800 mb-2">Ringkasan Lokasi</h4>
+                    <div class="grid grid-cols-2 gap-2">
+                        ${Object.entries(branchBreakdown).map(([branch, amount]) => `
+                            <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-2">
+                                <p class="text-[10px] text-indigo-500 font-bold">${escapeHtml(branch)}</p>
+                                <p class="font-bold text-indigo-700 text-sm">${rp(amount)}</p>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                <div>
+                    <h4 class="font-bold text-slate-800 mb-2">Barang yang Terjual</h4>
+                    ${itemList.length ? itemList.map(item => `
+                        <div class="bg-white border border-slate-200 rounded-xl p-3 flex justify-between gap-3">
+                            <div>
+                                <p class="font-bold text-slate-800 text-sm">${escapeHtml(item.nama)}</p>
+                                <p class="text-xs text-slate-500 mt-1">${item.qty} barang &bull; Modal ${rp(item.hargaModal)} &bull; Jual ${rp(item.hargaJual)}</p>
+                            </div>
+                            <div class="text-right shrink-0">
+                                <p class="font-bold text-indigo-600 text-sm">${rp(item.subtotal)}</p>
+                                <p class="text-xs text-amber-600 mt-1">Laba ${rp(item.profit)}</p>
+                            </div>
+                        </div>
+                    `).join('') : '<p class="text-sm text-slate-500 bg-slate-50 rounded-xl p-3">Detail barang belum tersedia pada transaksi lama.</p>'}
+                </div>
+                <div>
+                    <h4 class="font-bold text-slate-800 mb-2">Daftar Transaksi</h4>
+                    ${dayTransactions.map((transaction, index) => {
+                        const time = new Date(transaction.date).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+                        const items = Array.isArray(transaction.items) ? transaction.items : [];
+                        return `
+                            <div class="border border-slate-200 rounded-xl p-3">
+                                <div class="flex justify-between font-bold text-sm">
+                                    <span>Transaksi ${index + 1} &bull; ${time}</span>
+                                    <span class="text-indigo-600">${rp(transaction.total)}</span>
+                                </div>
+                                <p class="mt-1 text-xs">
+                                    <span class="inline-block rounded-full bg-slate-100 px-2 py-1 font-bold text-slate-600">${escapeHtml(getPaymentMethod(transaction))}</span>
+                                    <span class="inline-block rounded-full bg-indigo-50 px-2 py-1 font-bold text-indigo-700">${escapeHtml(getTransactionBranch(transaction))}</span>
+                                </p>
+                                ${items.length ? items.map(item => `
+                                    <div class="flex justify-between text-xs text-slate-600 mt-2 border-t pt-2">
+                                        <span>${escapeHtml(item.nama)} x${Number(item.qty || 0)}</span>
+                                        <span>${rp(Number(item.subtotal || 0))}</span>
+                                    </div>
+                                `).join('') : '<p class="text-xs text-slate-400 mt-2">Detail barang tidak tersedia.</p>'}
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+            document.getElementById('reportDetailModal').classList.remove('hidden');
+        }
+
+        function closeReportDetail() {
+            document.getElementById('reportDetailModal').classList.add('hidden');
+        }
+
+        let reportEditDateKey = '';
+
+        function toDateTimeLocalValue(dateValue, fallbackDateKey) {
+            const date = new Date(dateValue);
+            if (isNaN(date.getTime())) {
+                const [year, month, day] = fallbackDateKey.split('-');
+                return `${year}-${month}-${day}T12:00`;
+            }
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const hour = String(date.getHours()).padStart(2, '0');
+            const minute = String(date.getMinutes()).padStart(2, '0');
+            return `${year}-${month}-${day}T${hour}:${minute}`;
+        }
+
+        function openReportEditor(dateKey) {
+            reportEditDateKey = dateKey;
+            reportEditTransactions = transactions.filter(t =>
+                t && t.date && !isNaN(new Date(t.date).getTime()) && getLocalDateKey(t.date) === dateKey
+            ).map(t => JSON.parse(JSON.stringify(t)));
+
+            const [year, month, day] = dateKey.split('-').map(Number);
+            document.getElementById('reportEditTitle').innerText =
+                new Date(year, month - 1, day).toLocaleDateString('id-ID', {
+                    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+                });
+            document.getElementById('reportDetailModal').classList.add('hidden');
+            renderReportEditor();
+            document.getElementById('reportEditModal').classList.remove('hidden');
+        }
+
+        function syncReportEditorState() {
+            document.querySelectorAll('#reportEditContent .report-transaction').forEach(card => {
+                const transactionIndex = Number(card.dataset.index);
+                if (!reportEditTransactions[transactionIndex]) return;
+                const dateInput = card.querySelector('.report-date');
+                if (dateInput && dateInput.value) {
+                    const parsedDate = new Date(dateInput.value);
+                    if (!isNaN(parsedDate.getTime())) reportEditTransactions[transactionIndex].date = parsedDate.toISOString();
+                }
+                const paymentSelect = card.querySelector('.report-payment-method');
+                if (paymentSelect) reportEditTransactions[transactionIndex].paymentMethod = paymentSelect.value;
+                const branchSelect = card.querySelector('.report-location');
+                if (branchSelect) reportEditTransactions[transactionIndex].branch = branchSelect.value;
+                const items = [];
+                card.querySelectorAll('.report-item').forEach(row => {
+                    items.push({
+                        nama: row.querySelector('.report-item-name').value.trim().toUpperCase(),
+                        qty: parseInt(row.querySelector('.report-item-qty').value.replace(/[^0-9]/g, '')) || 0,
+                        hargaModal: parseInt(row.querySelector('.report-item-modal').value.replace(/[^0-9]/g, '')) || 0,
+                        hargaJual: parseInt(row.querySelector('.report-item-price').value.replace(/[^0-9]/g, '')) || 0,
+                        branch: branchSelect?.value || getTransactionBranch(reportEditTransactions[transactionIndex])
+                    });
+                });
+                reportEditTransactions[transactionIndex].items = items;
+            });
+        }
+
+        function renderReportEditor() {
+            const container = document.getElementById('reportEditContent');
+            if (reportEditTransactions.length === 0) {
+                container.innerHTML = '<p class="text-center text-slate-500 bg-slate-50 rounded-xl py-6">Belum ada transaksi pada laporan ini.</p>';
+                return;
+            }
+
+            container.innerHTML = reportEditTransactions.map((transaction, transactionIndex) => {
+                const items = Array.isArray(transaction.items) ? transaction.items : [];
+                return `
+                    <div class="report-transaction border border-slate-200 rounded-xl p-3" data-index="${transactionIndex}">
+                        <div class="flex flex-wrap items-end gap-2 mb-3">
+                            <div class="flex-1 min-w-[220px]">
+                                <label class="text-xs font-semibold text-slate-500 block mb-1">Tanggal dan waktu transaksi</label>
+                                <input class="report-date w-full p-2 border border-slate-300 rounded-lg" type="datetime-local"
+                                    value="${escapeHtml(toDateTimeLocalValue(transaction.date, reportEditDateKey))}">
+                            </div>
+                            <div class="w-full sm:w-40">
+                                <label class="text-xs font-semibold text-slate-500 block mb-1">Metode pembayaran</label>
+                                <select class="report-payment-method w-full p-2 border border-slate-300 rounded-lg">
+                                    ${['CASH', 'QRIS BCA', 'QRIS BRI'].map(method => `<option value="${method}" ${getPaymentMethod(transaction) === method ? 'selected' : ''}>${method}</option>`).join('')}
+                                </select>
+                            </div>
+                            <div class="w-full sm:w-44">
+                                <label class="text-xs font-semibold text-slate-500 block mb-1">Lokasi penjualan</label>
+                                <select class="report-location w-full p-2 border border-slate-300 rounded-lg">
+                                    ${getBranchNames().map(branch => `<option value="${escapeHtml(branch)}" ${getTransactionBranch(transaction) === branch ? 'selected' : ''}>${escapeHtml(branch)}</option>`).join('')}
+                                </select>
+                            </div>
+                            <button onclick="removeReportTransaction(${transactionIndex})" class="h-10 px-3 rounded-lg bg-red-50 hover:bg-red-100 text-red-600" title="Hapus transaksi">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </div>
+                        <div class="space-y-2">
+                            ${items.map((item, itemIndex) => `
+                                <div class="report-item bg-slate-50 border border-slate-200 rounded-lg p-2 grid grid-cols-2 sm:grid-cols-5 gap-2" data-index="${itemIndex}">
+                                    <div class="col-span-2 sm:col-span-1">
+                                        <label class="text-[10px] text-slate-500 block">Nama barang</label>
+                                        <input class="report-item-name w-full p-2 border border-slate-300 rounded-lg text-sm" value="${escapeHtml(item.nama || '')}">
+                                    </div>
+                                    <div>
+                                        <label class="text-[10px] text-slate-500 block">Jumlah</label>
+                                        <input class="report-item-qty w-full p-2 border border-slate-300 rounded-lg text-sm" inputmode="numeric" value="${Number(item.qty || 0)}">
+                                    </div>
+                                    <div>
+                                        <label class="text-[10px] text-slate-500 block">Modal/unit</label>
+                                        <input class="report-item-modal w-full p-2 border border-slate-300 rounded-lg text-sm" inputmode="numeric" value="${Number(item.hargaModal ?? 0)}">
+                                    </div>
+                                    <div>
+                                        <label class="text-[10px] text-slate-500 block">Jual/unit</label>
+                                        <input class="report-item-price w-full p-2 border border-slate-300 rounded-lg text-sm" inputmode="numeric" value="${Number(item.hargaJual ?? item.harga ?? 0)}">
+                                    </div>
+                                    <button onclick="removeReportItem(${transactionIndex}, ${itemIndex})" class="h-full min-h-10 rounded-lg bg-red-50 hover:bg-red-100 text-red-500" title="Hapus barang">
+                                        <i class="fa-solid fa-xmark"></i>
+                                    </button>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <button onclick="addReportItem(${transactionIndex})" class="mt-2 text-xs font-bold text-indigo-600 hover:text-indigo-800">
+                            <i class="fa-solid fa-plus mr-1"></i>Tambah barang
+                        </button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function addReportItem(transactionIndex) {
+            syncReportEditorState();
+            if (!reportEditTransactions[transactionIndex].items) reportEditTransactions[transactionIndex].items = [];
+            reportEditTransactions[transactionIndex].items.push({
+                nama: '',
+                qty: 1,
+                hargaModal: 0,
+                hargaJual: 0,
+                subtotal: 0,
+                profit: 0
+            });
+            renderReportEditor();
+        }
+
+        function removeReportItem(transactionIndex, itemIndex) {
+            syncReportEditorState();
+            reportEditTransactions[transactionIndex].items.splice(itemIndex, 1);
+            renderReportEditor();
+        }
+
+        function removeReportTransaction(transactionIndex) {
+            syncReportEditorState();
+            if (!confirm('Hapus transaksi ini dari laporan?')) return;
+            reportEditTransactions.splice(transactionIndex, 1);
+            renderReportEditor();
+        }
+
+        function addReportTransaction() {
+            syncReportEditorState();
+            const [year, month, day] = reportEditDateKey.split('-');
+            reportEditTransactions.unshift({
+                id: 'TRX-EDIT-' + Date.now(),
+                date: `${year}-${month}-${day}T12:00:00`,
+                total: 0,
+                profit: 0,
+                paymentMethod: 'CASH',
+                items: [{ nama: '', qty: 1, hargaModal: 0, hargaJual: 0, subtotal: 0, profit: 0 }]
+            });
+            renderReportEditor();
+        }
+
+        function closeReportEditor() {
+            document.getElementById('reportEditModal').classList.add('hidden');
+        }
+
+        function saveReportEditor() {
+            syncReportEditorState();
+            const cards = document.querySelectorAll('#reportEditContent .report-transaction');
+            const editedTransactions = [];
+
+            cards.forEach(card => {
+                const transactionIndex = Number(card.dataset.index);
+                const original = reportEditTransactions[transactionIndex];
+                if (!original) return;
+
+                const dateInput = card.querySelector('.report-date');
+                const parsedDate = new Date(dateInput.value);
+                if (!dateInput.value || isNaN(parsedDate.getTime())) {
+                    showToast('Tanggal transaksi tidak valid!', 'bg-red-500');
+                    return;
+                }
+
+                const items = [];
+                let total = 0;
+                let profit = 0;
+                card.querySelectorAll('.report-item').forEach(row => {
+                    const nama = row.querySelector('.report-item-name').value.trim().toUpperCase();
+                    const qty = parseInt(row.querySelector('.report-item-qty').value.replace(/[^0-9]/g, '')) || 0;
+                    const hargaModal = parseInt(row.querySelector('.report-item-modal').value.replace(/[^0-9]/g, '')) || 0;
+                    const hargaJual = parseInt(row.querySelector('.report-item-price').value.replace(/[^0-9]/g, '')) || 0;
+                    if (!nama || qty <= 0) return;
+                    const subtotal = hargaJual * qty;
+                    const itemProfit = subtotal - (hargaModal * qty);
+                    items.push({ nama, qty, hargaModal, hargaJual, subtotal, profit: itemProfit });
+                    total += subtotal;
+                    profit += itemProfit;
+                });
+
+                editedTransactions.push({
+                    id: original.id || 'TRX-EDIT-' + Date.now(),
+                    date: parsedDate.toISOString(),
+                    total,
+                    profit,
+                    paymentMethod: original.paymentMethod || 'CASH',
+                    items
+                });
+            });
+
+            if (cards.length !== editedTransactions.length) return;
+
+            transactions = transactions.filter(t =>
+                !(t && t.date && !isNaN(new Date(t.date).getTime()) && getLocalDateKey(t.date) === reportEditDateKey)
+            );
+            transactions.push(...editedTransactions);
+            transactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+            saveData();
+            renderAll();
+            closeReportEditor();
+            showToast('Laporan berhasil diperbarui', 'bg-emerald-500');
+        }
+
+        function renderCart() {
+            const container = document.getElementById('cartItems');
+            const floatCart = document.getElementById('floatingCart');
+            const badge = document.getElementById('cartBadge');
+            let total = 0;
+            let totalQty = 0;
+
+            if (cart.length === 0) {
+                container.innerHTML = `<p class="text-center text-slate-400 py-6">Keranjang masih kosong</p>`;
+                floatCart.classList.add('hidden');
+            } else {
+                floatCart.classList.remove('hidden');
+                container.innerHTML = cart.map(item => {
+                    const p = products.find(x => x.id === item.id);
+                    if (!p) return '';
+                    const unit = item.unit || 'pcs';
+                    const branch = item.branch || activeBranch;
+                    const info = getUnitInfo(p, unit, branch);
+                    const subtotal = info.price * item.qty;
+                    total += subtotal;
+                    totalQty += item.qty * info.pieces;
+                    return `
+                        <div class="flex justify-between items-center bg-slate-50 p-3 rounded-xl border border-slate-200">
+                            <div>
+                                <p class="font-bold text-slate-800 text-sm">${escapeHtml(p.nama)}</p>
+                                <p class="text-xs text-slate-500">${escapeHtml(branch)} - ${rp(info.price)} x ${item.qty} ${escapeHtml(info.label)} <span class="text-slate-400">(${item.qty * info.pieces} pcs)</span></p>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <span class="font-bold text-indigo-600 text-sm">${rp(subtotal)}</span>
+                                <button onclick="removeFromCart('${escapeHtml(p.id)}','${escapeHtml(unit)}','${escapeHtml(branch)}')" class="text-red-400 hover:text-red-600 p-1"><i class="fa-solid fa-trash"></i></button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+            badge.innerText = totalQty;
+            document.getElementById('cartTotalFloat').innerText = rp(total);
+            document.getElementById('cartTotalModal').innerText = rp(total);
+        }
+
+        // ==========================================
+        // LOGIKA UTAMA
+        // ==========================================
+        function addToCart(id, unit = 'pcs') {
+            const p = products.find(x => x.id === id);
+            if (!p) return;
+            if ((unit === 'pcs' && p.saleType === 'pack') || (unit === 'pack' && p.saleType === 'pcs')) {
+                showToast('Jenis penjualan produk ini tidak mendukung satuan tersebut!', 'bg-red-500');
+                return;
+            }
+            const info = getUnitInfo(p, unit, activeBranch);
+            const availableStock = getBranchStock(p, activeBranch);
+            if (availableStock < info.pieces) { showToast(`Stok ${escapeHtml(p.nama)} di ${escapeHtml(activeBranch)} tidak mencukupi untuk ${escapeHtml(info.label)}!`, 'bg-red-500'); return; }
+            const cartItem = cart.find(x => x.id === id && x.unit === unit && x.branch === activeBranch);
+            const currentQtyInCart = cartItem ? cartItem.qty : 0;
+            const piecesAlreadyInCart = cart.filter(x => x.id === id).reduce((sum, x) => {
+                const xInfo = getUnitInfo(p, x.unit || 'pcs', x.branch || activeBranch);
+                return sum + (x.qty * xInfo.pieces);
+            }, 0);
+            if (piecesAlreadyInCart + info.pieces > availableStock) { showToast(`Stok ${escapeHtml(p.nama)} di ${escapeHtml(activeBranch)} tidak mencukupi!`, 'bg-amber-500'); return; }
+            if (cartItem) cartItem.qty++;
+            else cart.push({ id, qty: 1, unit, branch: activeBranch });
+            renderCart();
+            showToast(`<b>${escapeHtml(p.nama)}</b> ditambahkan!<br><span class="text-xs opacity-90">${currentQtyInCart + 1} ${escapeHtml(info.label)} - ${escapeHtml(activeBranch)}</span>`);
+        }
+
+        function removeFromCart(id, unit = 'pcs', branch = activeBranch) {
+            const cartItem = cart.find(x => x.id === id && (x.unit || 'pcs') === unit && (x.branch || activeBranch) === branch);
+            if (cartItem) {
+                cartItem.qty--;
+                if (cartItem.qty <= 0) cart = cart.filter(x => x.id !== id);
+            }
+            renderCart();
+        }
+
+        function showToast(message, bgColor = 'bg-indigo-600') {
+            const container = document.getElementById('toastContainer');
+            if (!container) return;
+            const toast = document.createElement('div');
+            toast.className = `${bgColor} text-white px-5 py-3 rounded-xl shadow-2xl text-sm font-medium animate-toast pointer-events-auto flex items-center gap-3 w-full max-w-xs border border-white/20`;
+            toast.innerHTML = `<i class="fa-solid fa-circle-check text-lg"></i> <span>${message}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transition = 'opacity 0.3s ease';
+                setTimeout(() => toast.remove(), 300);
+            }, 2500);
+        }
+
+        function openCartModal() { document.getElementById('cartModal').classList.remove('hidden'); }
+        function closeCartModal() { document.getElementById('cartModal').classList.add('hidden'); }
+
+        function checkout() {
+            if (cart.length === 0) return;
+            const paymentMethod = document.getElementById('paymentMethod')?.value || 'CASH';
+
+            let total = 0;
+            let profit = 0;
+            const items = [];
+            cart.forEach(item => {
+                const p = products.find(x => x.id === item.id);
+                if (p) {
+                    const unit = item.unit || 'pcs';
+                    const branch = item.branch || activeBranch;
+                    const info = getUnitInfo(p, unit, branch);
+                    const piecesSold = info.pieces * item.qty;
+                    const subtotal = info.price * item.qty;
+                    const modalSubtotal = info.modal * item.qty;
+                    const itemProfit = subtotal - modalSubtotal;
+                    total += subtotal;
+                    profit += itemProfit;
+                    setBranchStock(p, branch, getBranchStock(p, branch) - piecesSold);
+                    items.push(`${p.nama} x${item.qty} ${info.label} (${piecesSold} pcs)`);
+                }
+            });
+
+            const transactionItems = cart.map(item => {
+                const p = products.find(x => x.id === item.id);
+                if (!p) return null;
+                const unit = item.unit || 'pcs';
+                const branch = item.branch || activeBranch;
+                const info = getUnitInfo(p, unit, branch);
+                const piecesSold = info.pieces * item.qty;
+                const subtotal = Number(info.price || 0) * item.qty;
+                const hargaModal = Number(info.modal || 0);
+                return {
+                    id: p.id,
+                    nama: p.nama,
+                    qty: item.qty,
+                    unit,
+                    unitPieces: info.pieces,
+                    piecesSold,
+                    branch,
+                    hargaModal,
+                    hargaJual: Number(info.price || 0),
+                    subtotal,
+                    profit: subtotal - (hargaModal * item.qty)
+                };
+            }).filter(Boolean);
+
+            transactions.unshift({
+                id: 'TRX-' + Date.now(),
+                date: new Date().toISOString(),
+                total,
+                profit,
+                paymentMethod,
+                branch: activeBranch,
+                items: transactionItems
+            });
+            kirimKeSheets(items.join(', '), total, profit, transactionItems, LOGIN_USERNAME, paymentMethod);
+
+            cart = [];
+            document.getElementById('paymentMethod').value = 'CASH';
+            saveData();
+            renderAll();
+            closeCartModal();
+            showToast('Transaksi Berhasil!', 'bg-emerald-500');
+        }
+
+        // ==========================================
+        // NAVIGASI & MANAJEMEN PRODUK
+        // ==========================================
+        function setView(viewName) {
+            ['kasir', 'inventaris', 'laporan'].forEach(v => {
+                document.getElementById(`view-${v}`).classList.add('hidden');
+            });
+            document.getElementById(`view-${viewName}`).classList.remove('hidden');
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('text-indigo-400');
+                btn.classList.add('text-slate-400');
+            });
+            const navs = document.querySelectorAll('.nav-btn');
+            if (viewName === 'kasir') navs[0].classList.add('text-indigo-400');
+            if (viewName === 'inventaris') navs[1].classList.add('text-indigo-400');
+            if (viewName === 'laporan') navs[2].classList.add('text-indigo-400');
+            if (viewName !== 'kasir') document.getElementById('floatingCart').classList.add('hidden');
+            else renderCart();
+        }
+
+        document.getElementById('formProduct').addEventListener('submit', (e) => {
+            e.preventDefault();
+            try {
+                const editId = document.getElementById('editId').value;
+                const nama = document.getElementById('inpNama').value.trim().toUpperCase();
+                const hargaRaw = document.getElementById('inpHarga').value;
+                const harga = parseInt(hargaRaw.replace(/[^0-9]/g, '')) || 0;
+                const hargaModalRaw = document.getElementById('inpHargaModal').value;
+                const stokRaw = document.getElementById('inpStok').value;
+                const stok = parseInt(stokRaw.replace(/[^0-9]/g, '')) || 0;
+                const cabang = document.getElementById('inpCabang').value.trim().toUpperCase();
+                const saleType = document.getElementById('inpJenisJual').value || 'both';
+                const isiPackRaw = document.getElementById('inpIsiPack').value;
+                const isiPack = saleType === 'pcs' ? 1 : Math.max(1, parseInt(isiPackRaw.replace(/[^0-9]/g, '')) || 1);
+                const hargaPackRaw = document.getElementById('inpHargaPack').value;
+                const hargaPack = saleType === 'pcs' ? 0 : (parseInt(hargaPackRaw.replace(/[^0-9]/g, '')) || (harga * isiPack));
+                const hargaModalPack = parseInt(hargaModalRaw.replace(/[^0-9]/g, '')) || 0;
+                const hargaModal = saleType === 'pcs' ? hargaModalPack : Math.round(hargaModalPack / isiPack);
+                if (!nama) { showToast('Nama produk tidak boleh kosong!', 'bg-red-500'); return; }
+                if (!cabang) { showToast('Cabang/lokasi tidak boleh kosong!', 'bg-red-500'); return; }
+                if (!locations.includes(cabang)) locations.push(cabang);
+
+                if (editId) {
+                    const p = products.find(x => x.id === editId);
+                    if (p) {
+                        const oldBranch = getBranch(p, cabang);
+                        const now = new Date().toISOString();
+                        const priceHistory = Array.isArray(oldBranch?.priceHistory) ? oldBranch.priceHistory : [];
+                        const modalHistory = Array.isArray(oldBranch?.modalHistory) ? oldBranch.modalHistory : [];
+                        if (!oldBranch || oldBranch.hargaPcs !== harga || oldBranch.hargaPack !== hargaPack) {
+                            priceHistory.push({ at: now, branch: cabang, hargaPcs: harga, hargaPack });
+                        }
+                        if (!oldBranch || oldBranch.hargaModalPcs !== hargaModal) {
+                            modalHistory.push({ at: now, branch: cabang, hargaModalPcs: hargaModal, hargaModalPack });
+                        }
+                        const branchData = {
+                            name: cabang,
+                            hargaPcs: harga,
+                            hargaPack,
+                            hargaModalPcs: hargaModal,
+                            hargaModalPack,
+                            priceHistory,
+                            modalHistory
+                        };
+                        p.nama = nama;
+                        p.pcsPerPack = isiPack;
+                        p.packName = 'PACK';
+                        p.saleType = saleType;
+                        p.hargaModal = hargaModal;
+                        p.harga = harga;
+                        p.hargaPack = hargaPack;
+                        p.branches = p.branches || [];
+                        const branchIndex = p.branches.findIndex(b => b.name === cabang);
+                        if (branchIndex >= 0) p.branches[branchIndex] = branchData;
+                        else p.branches.push(branchData);
+                        if (!p.branches.some(b => b.name === 'TOKO UTAMA')) {
+                            p.branches.push({ ...branchData, name: 'TOKO UTAMA', priceHistory: [], modalHistory: [] });
+                        }
+                        if (!p.stockByBranch || typeof p.stockByBranch !== 'object') p.stockByBranch = {};
+                        if (!Object.prototype.hasOwnProperty.call(p.stockByBranch, cabang) && cabang !== 'TOKO UTAMA') p.stockByBranch[cabang] = 0;
+                        setBranchStock(p, 'TOKO UTAMA', stok);
+                    }
+                    showToast('Produk berhasil diperbarui', 'bg-emerald-500');
+                } else {
+                    const existingProduct = products.find(product =>
+                        String(product.nama || '').trim().toUpperCase() === nama
+                    );
+                    if (existingProduct) {
+                        const stokLama = getBranchStock(existingProduct, cabang);
+                        setBranchStock(existingProduct, cabang, stokLama + stok);
+                        showToast(`Stok ${nama} bertambah dari ${stokLama} menjadi ${stokLama + stok} pcs`, 'bg-emerald-500');
+                    } else {
+                        const newId = 'P' + Date.now();
+                        const now = new Date().toISOString();
+                        const stokTokoUtama = cabang === 'TOKO UTAMA' ? stok : 0;
+                        products.push({
+                            id: newId, nama,
+                            pcsPerPack: isiPack, packName: 'PACK',
+                            saleType,
+                            stokPcs: stokTokoUtama, stok: stokTokoUtama,
+                            hargaModal, harga, hargaPack,
+                            stockByBranch: { 'TOKO UTAMA': stokTokoUtama, [cabang]: stok },
+                            branches: [{
+                                name: cabang,
+                                hargaPcs: harga,
+                                hargaPack,
+                                hargaModalPcs: hargaModal,
+                                hargaModalPack,
+                                priceHistory: [{ at: now, branch: cabang, hargaPcs: harga, hargaPack }],
+                                modalHistory: [{ at: now, branch: cabang, hargaModalPcs: hargaModal, hargaModalPack }]
+                            }]
+                        });
+                        showToast('Produk baru berhasil ditambahkan', 'bg-emerald-500');
+                    }
+                }
+                saveData();
+                renderAll();
+                cancelEdit();
+            } catch (error) {
+                console.error(error);
+                showToast('Terjadi kesalahan sistem', 'bg-red-500');
+            }
+        });
+
+        function editProduct(id) {
+            const p = products.find(x => x.id === id);
+            if (!p) return;
+            const branch = getBranch(p, activeBranch) || p.branches?.[0];
+            document.getElementById('editId').value = p.id;
+            document.getElementById('inpNama').value = p.nama;
+            document.getElementById('inpJenisJual').value = p.saleType || 'both';
+            document.getElementById('inpCabang').value = branch?.name || activeBranch;
+            document.getElementById('inpIsiPack').value = Number(p.pcsPerPack || 1);
+            document.getElementById('inpHargaModal').value = (p.saleType || 'both') === 'pcs'
+                ? Number(branch?.hargaModalPcs ?? p.hargaModal ?? 0)
+                : Number(branch?.hargaModalPack ?? ((branch?.hargaModalPcs ?? p.hargaModal ?? 0) * Number(p.pcsPerPack || 1)));
+            document.getElementById('inpHarga').value = Number(branch?.hargaPcs ?? p.harga ?? 0);
+            document.getElementById('inpHargaPack').value = Number(branch?.hargaPack ?? p.hargaPack ?? 0);
+            document.getElementById('inpStok').value = getBranchStock(p, 'TOKO UTAMA');
+            toggleSaleUnitFields();
+            const container = document.getElementById('formContainer');
+            container.classList.add('bg-yellow-50');
+            container.classList.replace('bg-white', 'bg-yellow-50');
+            document.getElementById('formTitle').innerText = '⚠️ Mode Edit Aktif';
+            document.getElementById('formTitle').classList.replace('text-indigo-900', 'text-amber-700');
+            const btnSubmit = document.getElementById('btnSubmit');
+            btnSubmit.innerText = 'Update Produk';
+            btnSubmit.classList.replace('bg-indigo-600', 'bg-amber-500');
+            btnSubmit.classList.replace('hover:bg-indigo-700', 'hover:bg-amber-600');
+            document.getElementById('btnCancelEdit').classList.remove('hidden');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function cancelEdit() {
+            document.getElementById('formProduct').reset();
+            document.getElementById('editId').value = '';
+            document.getElementById('inpCabang').value = activeBranch || 'TOKO UTAMA';
+            document.getElementById('inpIsiPack').value = '1';
+            toggleSaleUnitFields();
+            const container = document.getElementById('formContainer');
+            container.classList.remove('bg-yellow-50');
+            container.classList.replace('bg-yellow-50', 'bg-white');
+            const title = document.getElementById('formTitle');
+            title.innerText = 'Tambah Produk Baru';
+            title.classList.replace('text-amber-700', 'text-indigo-900');
+            const btnSubmit = document.getElementById('btnSubmit');
+            btnSubmit.innerText = 'Simpan Produk';
+            btnSubmit.classList.replace('bg-amber-500', 'bg-indigo-600');
+            btnSubmit.classList.replace('hover:bg-amber-600', 'hover:bg-indigo-700');
+            document.getElementById('btnCancelEdit').classList.add('hidden');
+        }
+
+        function renderBranchList() {
+            const container = document.getElementById('branchList');
+            if (!container) return;
+            container.innerHTML = getBranchNames().map(name => `
+                <button type="button" onclick="selectBranch('${escapeHtml(name)}')"
+                    class="px-3 py-1.5 rounded-full text-xs font-bold ${name === activeBranch ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-indigo-100'}">
+                    <i class="fa-solid fa-location-dot mr-1"></i>${escapeHtml(name)}
+                </button>
+            `).join('');
+        }
+
+        function selectBranch(name) {
+            setActiveBranch(name);
+            renderBranchList();
+        }
+
+        function addNewBranch() {
+            const input = document.getElementById('newBranchName');
+            const name = (input.value || '').trim().toUpperCase();
+            if (!name) {
+                showToast('Masukkan nama lokasi terlebih dahulu!', 'bg-red-500');
+                input.focus();
+                return;
+            }
+            if (name === 'TOKO UTAMA') {
+                showToast('Lokasi Toko Utama sudah tersedia.', 'bg-amber-500');
+                input.value = '';
+                return;
+            }
+            if (getBranchNames().includes(name)) {
+                showToast(`Lokasi ${name} sudah ada.`, 'bg-amber-500');
+                return;
+            }
+
+            locations.push(name);
+            products.forEach(p => {
+                const defaultBranch = getBranch(p, 'TOKO UTAMA') || p.branches?.[0] || null;
+                if (defaultBranch && !p.branches.some(b => b.name === name)) {
+                    p.branches.push({
+                        ...defaultBranch,
+                        name,
+                        priceHistory: [],
+                        modalHistory: []
+                    });
+                }
+                if (!p.stockByBranch || typeof p.stockByBranch !== 'object') p.stockByBranch = {};
+                if (!Object.prototype.hasOwnProperty.call(p.stockByBranch, name)) p.stockByBranch[name] = 0;
+            });
+
+            input.value = '';
+            saveData();
+            renderAll();
+            setActiveBranch(name);
+            showToast(`Lokasi ${name} berhasil ditambahkan`, 'bg-emerald-500');
+        }
+
+        function renderTransferProduct() {
+            const select = document.getElementById('transferProduct');
+            if (!select) return;
+            const previous = select.value;
+            select.innerHTML = products.map(p =>
+                `<option value="${escapeHtml(p.id)}">${escapeHtml(p.nama)}</option>`
+            ).join('');
+            if (products.some(p => p.id === previous)) select.value = previous;
+            renderTransferLocations();
+        }
+
+        function renderTransferLocations() {
+            const productSelect = document.getElementById('transferProduct');
+            const fromSelect = document.getElementById('transferFrom');
+            const toSelect = document.getElementById('transferTo');
+            if (!productSelect || !fromSelect || !toSelect) return;
+            const names = getBranchNames();
+            fromSelect.innerHTML = names.map(name => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join('');
+            toSelect.innerHTML = names.map(name =>
+                `<option value="${escapeHtml(name)}" ${name !== 'TOKO UTAMA' ? 'selected' : ''}>${escapeHtml(name)}</option>`
+            ).join('');
+            fromSelect.value = 'TOKO UTAMA';
+            updateTransferAvailability();
+        }
+
+        function updateTransferAvailability() {
+            const productSelect = document.getElementById('transferProduct');
+            const fromSelect = document.getElementById('transferFrom');
+            const availability = document.getElementById('transferAvailability');
+            if (!productSelect || !fromSelect || !availability) return;
+            const p = products.find(x => x.id === productSelect.value);
+            if (!p) {
+                availability.textContent = '';
+                return;
+            }
+            availability.textContent = `Stok tersedia di ${fromSelect.value}: ${getBranchStock(p, fromSelect.value)} pcs`;
+        }
+
+        function transferStock() {
+            const p = products.find(x => x.id === document.getElementById('transferProduct').value);
+            const from = document.getElementById('transferFrom').value;
+            const to = document.getElementById('transferTo').value;
+            const qty = parseInt(document.getElementById('transferQty').value.replace(/[^0-9]/g, '')) || 0;
+            if (!p) return;
+            if (from === to) {
+                showToast('Lokasi asal dan tujuan harus berbeda!', 'bg-red-500');
+                return;
+            }
+            if (qty <= 0) {
+                showToast('Jumlah transfer harus lebih dari 0!', 'bg-red-500');
+                return;
+            }
+            const available = getBranchStock(p, from);
+            if (qty > available) {
+                showToast(`Stok di ${from} hanya ${available} pcs`, 'bg-red-500');
+                return;
+            }
+            setBranchStock(p, from, available - qty);
+            setBranchStock(p, to, getBranchStock(p, to) + qty);
+            p.transfers.push({
+                at: new Date().toISOString(),
+                from,
+                to,
+                qtyPcs: qty
+            });
+            saveData();
+            renderAll();
+            showToast(`${qty} pcs ${p.nama} ditransfer ke ${to}`, 'bg-emerald-500');
+        }
+
+        function deleteProduct(id) {
+            if (confirm('Yakin ingin menghapus produk ini?')) {
+                products = products.filter(x => x.id !== id);
+                saveData();
+                renderAll();
+                showToast('Produk berhasil dihapus', 'bg-red-500');
+                cancelEdit();
+            }
+        }
+
+        document.getElementById('searchInput').addEventListener('input', renderProducts);
+        checkLogin();
+    </script>
+</body>
+</html>
